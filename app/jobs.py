@@ -6,6 +6,9 @@ from typing import Any
 from app.models.schemas import ReviewJob
 
 
+CLAIM_TTL = 24 * 3600
+
+
 class JobStore:
     """In-memory job registry; jobs expire after `ttl` seconds."""
 
@@ -13,6 +16,22 @@ class JobStore:
         self._ttl = ttl
         self._jobs: dict[str, tuple[float, ReviewJob]] = {}
         self._tasks: set[asyncio.Task[Any]] = set()
+        self._claims: dict[str, float] = {}
+
+    def claim(self, key: str) -> bool:
+        """Atomically reserve `key`; False if it was claimed recently (webhook de-duplication)."""
+        now = time.monotonic()
+        self._claims = {k: ts for k, ts in self._claims.items() if now - ts < CLAIM_TTL}
+        if key in self._claims:
+            return False
+        self._claims[key] = now
+        return True
+
+    def release(self, key: str) -> None:
+        self._claims.pop(key, None)
+
+    def active_count(self) -> int:
+        return sum(1 for _, job in self._jobs.values() if job.is_active)
 
     def add(self, job: ReviewJob, runner: Coroutine[Any, Any, None]) -> None:
         self._purge()

@@ -147,6 +147,7 @@ class ReviewJob(BaseModel):
     files_reviewed: list[str] = Field(default_factory=list)
     skipped: list[SkippedFile] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property

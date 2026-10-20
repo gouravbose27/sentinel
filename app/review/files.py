@@ -4,6 +4,7 @@ import re
 from app.ado.client import AdoClient
 from app.config import Settings
 from app.models.schemas import ChangedFile, PRContext, ReviewRequest, SkippedFile
+from app.review.dependencies import manifest_kind
 
 _IGNORED_PARTS = ("/node_modules/", "/.venv/", "/venv/", "/site-packages/", "/vendor/", "/__pycache__/")
 _GENERATED = ("_pb2.py", "_pb2_grpc.py", ".min.")
@@ -18,6 +19,8 @@ _SPARKSQL_RE = re.compile(
 def classify(path: str, content: str) -> str | None:
     """Return a language label for reviewable files, or None."""
     lower = path.lower()
+    if manifest_kind(path):
+        return "manifest"
     if lower.endswith(".py"):
         return "pyspark" if _PYSPARK_RE.search(content) else "python"
     if lower.endswith(".sql"):
@@ -31,7 +34,7 @@ def skip_reason(path: str) -> str | None:
         return "vendored or environment path"
     if any(marker in lower for marker in _GENERATED):
         return "generated file"
-    if not lower.endswith((".py", ".sql")):
+    if not lower.endswith((".py", ".sql")) and not manifest_kind(path):
         return "unsupported file type"
     return None
 

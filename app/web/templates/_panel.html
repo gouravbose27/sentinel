@@ -56,6 +56,10 @@
     <div class="stat"><span class="stat-num">{{ job.files_reviewed|length }}</span><span class="stat-label">Files scanned</span></div>
   </section>
 
+  {% if job.warnings %}
+  <div class="alert alert-warn" role="alert">{% for w in job.warnings %}<p>{{ w }}</p>{% endfor %}</div>
+  {% endif %}
+
   {% if job.errors %}
   <div class="alert alert-warn" role="alert">
     <strong>{{ job.errors|length }} segment{{ 's' if job.errors|length != 1 }} could not be analyzed.</strong>
@@ -70,6 +74,10 @@
         {% for sev in severities %}{% if counts[sev] %}
         <button type="button" class="chip sev-{{ sev }}" data-filter="{{ sev }}" aria-pressed="true">{{ sev }} <b>{{ counts[sev] }}</b></button>
         {% endif %}{% endfor %}
+        {% if cat_counts|length > 1 %}<span class="filter-sep" aria-hidden="true"></span>
+        {% for cat, n in cat_counts.items() %}
+        <button type="button" class="chip chip-cat" data-filter-cat="{{ cat }}" aria-pressed="true">{{ cat }} <b>{{ n }}</b></button>
+        {% endfor %}{% endif %}
       </div>
       <label class="check-all"><input type="checkbox" id="select-all" checked><span>Select all</span></label>
     </div>
@@ -82,7 +90,7 @@
       </summary>
       <div class="file-body">
         {% for f in items %}
-        <article class="finding sev-{{ f.severity.value }}" data-sev="{{ f.severity.value }}">
+        <article class="finding sev-{{ f.severity.value }}" data-sev="{{ f.severity.value }}" data-cat="{{ f.category.value }}">
           <label class="pick" title="Include when posting to the PR">
             <input type="checkbox" name="finding_ids" value="{{ f.id }}" checked><span></span>
           </label>

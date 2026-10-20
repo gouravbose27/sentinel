@@ -244,6 +244,8 @@ a { color: inherit; text-decoration: none; }
 .chip:hover { box-shadow: 0 0 16px -4px var(--sev); }
 .chip[aria-pressed="false"] { opacity: 0.38; text-decoration: line-through; }
 .chip:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.chip-cat { --sev: var(--violet); }
+.filter-sep { width: 1px; align-self: stretch; background: var(--line-strong); margin: 0 4px; }
 .check-all { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; }
 .check-all input { accent-color: var(--cyan); width: 16px; height: 16px; }
 

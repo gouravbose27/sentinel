@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any
 from urllib.parse import quote
@@ -8,6 +9,8 @@ log = logging.getLogger(__name__)
 
 API_VERSION = "7.1"
 HOST = "https://dev.azure.com"
+MAX_ATTEMPTS = 3
+RETRYABLE = {429, 500, 502, 503, 504}
 
 
 class AdoError(Exception):
@@ -29,6 +32,12 @@ class AdoClient:
         if self._owns_http:
             await self._http.aclose()
 
+    @staticmethod
+    def _backoff(attempt: int, retry_after: str | None) -> float:
+        if retry_after and retry_after.isdigit():
+            return min(int(retry_after), 30)
+        return 0.5 * 2 ** (attempt - 1)
+
     def _repo_url(self, project: str, repo: str) -> str:
         q = lambda s: quote(s, safe="")  # noqa: E731
         return f"{HOST}/{q(self._org)}/{q(project)}/_apis/git/repositories/{q(repo)}"
@@ -42,13 +51,21 @@ class AdoClient:
         json: Any = None,
         allow_404: bool = False,
     ) -> httpx.Response | None:
-        try:
-            resp = await self._http.request(
-                method, url, params={"api-version": API_VERSION, **(params or {})}, json=json
-            )
-        except httpx.HTTPError as exc:
-            log.warning("Azure DevOps request failed: %s", type(exc).__name__)
-            raise AdoError("Could not reach Azure DevOps.") from exc
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            try:
+                resp = await self._http.request(
+                    method, url, params={"api-version": API_VERSION, **(params or {})}, json=json
+                )
+            except httpx.HTTPError as exc:
+                if attempt < MAX_ATTEMPTS:
+                    await asyncio.sleep(self._backoff(attempt, None))
+                    continue
+                log.warning("Azure DevOps request failed: %s", type(exc).__name__)
+                raise AdoError("Could not reach Azure DevOps.") from exc
+            if resp.status_code in RETRYABLE and attempt < MAX_ATTEMPTS:
+                await asyncio.sleep(self._backoff(attempt, resp.headers.get("Retry-After")))
+                continue
+            break
 
         status = resp.status_code
         if status == 404 and allow_404:
@@ -135,4 +152,17 @@ class AdoClient:
             body["threadContext"] = context
         await self._request(
             "POST", f"{self._repo_url(project, repo)}/pullrequests/{pr_id}/threads", json=body
+        )
+
+    async def create_status(
+        self, project: str, repo: str, pr_id: int, *, state: str, description: str
+    ) -> None:
+        """state: pending, succeeded, failed or error. Needs the Code (Status) PAT scope."""
+        body = {
+            "state": state,
+            "description": description[:400],
+            "context": {"name": "ai-review", "genre": "sentinel"},
+        }
+        await self._request(
+            "POST", f"{self._repo_url(project, repo)}/pullrequests/{pr_id}/statuses", json=body
         )

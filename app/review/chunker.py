@@ -60,3 +60,13 @@ def chunk_hunks(hunks: list[str], max_chars: int) -> list[str]:
 
 def build_chunks(base: str, head: str, max_chars: int) -> list[str]:
     return chunk_hunks(diff_hunks(base, head), max_chars)
+
+
+def added_lines(base: str, head: str) -> set[int]:
+    """1-based line numbers in `head` that were inserted or rewritten."""
+    matcher = difflib.SequenceMatcher(None, base.splitlines(), head.splitlines(), autojunk=False)
+    added: set[int] = set()
+    for tag, _, _, j1, j2 in matcher.get_opcodes():
+        if tag in ("replace", "insert"):
+            added.update(range(j1 + 1, j2 + 1))
+    return added

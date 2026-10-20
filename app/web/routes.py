@@ -8,11 +8,10 @@ from pydantic import ValidationError
 
 from app.ado.client import AdoClient, AdoError
 from app.config import Settings
-from app.llm.openai_provider import OpenAIProvider
 from app.models.schemas import SEVERITY_RANK, JobStatus, ReviewJob, ReviewRequest, Severity
-from app.review.orchestrator import run_review
 from app.review.publisher import publish
 from app.review.reviewers import REVIEWERS, catalog
+from app.review.runner import execute_job
 
 log = logging.getLogger(__name__)
 
@@ -38,17 +37,11 @@ def _panel_context(job: ReviewJob) -> dict:
     for finding in job.findings:
         counts[finding.severity.value] += 1
     progress = round(100 * job.done_units / job.total_units) if job.total_units else 0
-    return {"job": job, "groups": groups, "counts": counts, "progress": progress,
+    cat_counts: dict[str, int] = {}
+    for finding in job.findings:
+        cat_counts[finding.category.value] = cat_counts.get(finding.category.value, 0) + 1
+    return {"job": job, "groups": groups, "counts": counts, "progress": progress, "cat_counts": cat_counts,
             "severities": [s.value for s in sorted(Severity, key=SEVERITY_RANK.get)]}
-
-
-async def _run_job(job: ReviewJob, settings: Settings) -> None:
-    try:
-        async with AdoClient(job.request.org, settings.ado_pat.get_secret_value()) as ado:
-            await run_review(job, ado=ado, llm=OpenAIProvider(settings), settings=settings)
-    except Exception:
-        log.exception("Could not start review job")
-        job.fail("Could not start the review. Check the server configuration.")
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -77,6 +70,8 @@ async def create_review(
         errors["form"] = "OPENAI_API_KEY is not configured on the server."
     elif not settings.ado_pat.get_secret_value():
         errors["form"] = "ADO_PAT is not configured on the server."
+    elif request.app.state.jobs.active_count() >= settings.max_active_jobs:
+        errors["form"] = "Too many reviews are running. Try again in a minute."
 
     review_request = None
     try:
@@ -95,7 +90,7 @@ async def create_review(
         return _render_form(request, values=values, selected=chosen, errors=errors, status_code=422)
 
     job = ReviewJob(request=review_request)
-    request.app.state.jobs.add(job, _run_job(job, settings))
+    request.app.state.jobs.add(job, execute_job(job, settings))
     return RedirectResponse(f"/reviews/{job.id}", status_code=303)
 
 

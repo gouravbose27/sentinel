@@ -14,8 +14,9 @@
 
   function applyFilters() {
     const off = new Set($$('[data-filter][aria-pressed="false"]').map((c) => c.dataset.filter));
+    const offCat = new Set($$('[data-filter-cat][aria-pressed="false"]').map((c) => c.dataset.filterCat));
     $$('.finding').forEach((el) => {
-      const hidden = off.has(el.dataset.sev);
+      const hidden = off.has(el.dataset.sev) || offCat.has(el.dataset.cat);
       el.hidden = hidden;
       $('input[name="finding_ids"]', el).disabled = hidden;
     });
@@ -33,7 +34,7 @@
   });
 
   document.addEventListener('click', (e) => {
-    const chip = e.target.closest('[data-filter]');
+    const chip = e.target.closest('[data-filter], [data-filter-cat]');
     if (!chip) return;
     chip.setAttribute('aria-pressed', chip.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
     applyFilters();
