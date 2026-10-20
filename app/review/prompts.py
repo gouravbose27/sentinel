@@ -17,7 +17,8 @@ Output rules:
 - severity: critical = crash, data loss or corruption in normal use; high = likely wrong results;
   medium = wrong in edge cases; low = minor; info = observation.
 - title is one short line. description explains what is wrong and why, in 1-3 sentences.
-- suggestion is a short corrected snippet when useful, otherwise null.
+- suggestion is a short corrected snippet when useful, otherwise null. It must be written in the
+  same programming language as the file under review (see the Language line), never another one.
 - references lists relevant identifiers (for example CWE ids) or is empty.
 """
 
@@ -87,13 +88,13 @@ empty inputs and schema. Skip trivial code. Medium severity for untested busines
         "sql": """\
 Suggest missing tests for this SQL. One finding per new or changed query, view or transformation,
 anchored at its first line. Title: 'Add test: <behaviour>'. Describe input rows and the expected
-output for the key cases (NULLs, duplicates, empty input, boundary dates) and give a pytest snippet
-that creates temp views and runs the query through a Spark session when practical.""",
+output for the key cases (NULLs, duplicates, empty input, boundary dates) and give the suggestion
+as SQL (for example setup INSERTs plus an assertion query), not Python.""",
         "sparksql": """\
 Suggest missing tests for this Spark SQL. One finding per new or changed query, view or MERGE,
 anchored at its first line. Title: 'Add test: <behaviour>'. Describe input rows and expected
-output for the key cases (NULLs, duplicates, empty input, partition boundaries) and give a pytest
-snippet that creates temp views and runs the query with spark.sql.""",
+output for the key cases (NULLs, duplicates, empty input, partition boundaries) and give the
+suggestion as Spark SQL (for example temp views plus an assertion query), not Python.""",
     },
     Category.OPTIMIZATION: {
         "python": """\

@@ -17,7 +17,7 @@ class PublishResult:
 
 def format_comment(finding: Finding) -> str:
     path = finding.file.lower()
-    lang = "sql" if path.endswith(".sql") else "python" if path.endswith(".py") else ""
+    lang = "sql" if path.endswith(".sql") else "python" if path.endswith((".py", ".pyspark")) else ""
     lines = [f"**[{finding.severity.value.title()} | {finding.category.value.title()}] {finding.title}**", ""]
     lines.append(finding.description)
     if finding.suggestion:
