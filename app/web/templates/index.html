@@ -13,7 +13,7 @@
     <span class="card-title">Parameters</span>
   </div>
 
-  <form method="post" action="/reviews" class="form" novalidate>
+  <form method="post" action="/reviews" class="form">
     {% if errors.form %}<div class="alert alert-error" role="alert">{{ errors.form }}</div>{% endif %}
 
     <div class="grid-2">
@@ -34,7 +34,7 @@
       </label>
       <label class="field">
         <span class="label">Pull request #</span>
-        <input class="input mono{{ ' invalid' if errors.pr_id }}" name="pr_id" value="{{ values.pr_id or '' }}" placeholder="1234" inputmode="numeric" autocomplete="off" required>
+        <input class="input mono{{ ' invalid' if errors.pr_id }}" name="pr_id" value="{{ values.pr_id or '' }}" placeholder="1234" inputmode="numeric" pattern="[1-9][0-9]*" title="Enter a positive whole number" autocomplete="off" required>
         {% if errors.pr_id %}<span class="hint err">{{ errors.pr_id }}</span>{% endif %}
       </label>
     </div>

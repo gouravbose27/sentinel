@@ -174,7 +174,8 @@ a { color: inherit; text-decoration: none; }
 .input::placeholder { color: rgba(141, 149, 189, 0.45); }
 .input:hover { border-color: var(--line-strong); }
 .input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(34, 228, 255, 0.16), 0 0 24px -6px rgba(34, 228, 255, 0.5); }
-.input.invalid { border-color: var(--red); }
+.input.invalid,
+.input:user-invalid { border-color: var(--red); box-shadow: 0 0 0 3px rgba(255, 84, 112, 0.16); }
 .hint { font-size: 12px; }
 .hint.err { color: var(--red); }
 
