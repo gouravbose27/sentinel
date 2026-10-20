@@ -1,0 +1,132 @@
+{% from "_icons.html" import icon %}
+<div id="review-panel"
+     {% if job.is_active %}hx-get="/reviews/{{ job.id }}/panel" hx-trigger="every 1500ms" hx-swap="outerHTML"{% endif %}>
+
+  <section class="pr-head card">
+    <div class="pr-head-main">
+      <p class="eyebrow mono">{{ job.request.org }} / {{ job.request.project }} / {{ job.request.repo }}</p>
+      <h1 class="pr-title">
+        <span class="pr-num mono">#{{ job.request.pr_id }}</span>
+        {{ job.pr_title or 'Acquiring pull request...' }}
+      </h1>
+      <div class="pr-meta">
+        {% if job.source_branch %}
+        <span class="meta-item mono">{{ icon('branch') }}{{ job.source_branch }} <span class="dim">into</span> {{ job.target_branch }}</span>
+        {% endif %}
+        {% if job.pr_author %}<span class="meta-item">by {{ job.pr_author }}</span>{% endif %}
+      </div>
+    </div>
+    <a class="btn btn-ghost" href="{{ job.pr_url }}" target="_blank" rel="noopener noreferrer">
+      <span>Open in Azure DevOps</span>{{ icon('external') }}
+    </a>
+  </section>
+
+  {% if job.status.value == 'failed' %}
+  <section class="card state-card">
+    <div class="alert alert-error" role="alert"><strong>Review failed.</strong> {{ job.message }}</div>
+    <a class="btn btn-primary" href="/"><span>Start a new review</span></a>
+  </section>
+
+  {% elif job.is_active %}
+  <section class="card state-card scan">
+    <div id="scanner" class="scanner" hx-preserve="true" aria-hidden="true">
+      <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
+      <span class="sweep"></span><span class="core"></span>
+    </div>
+    <div class="scan-info" role="status" aria-live="polite">
+      <p class="scan-title">{{ job.message }}<span class="dots"></span></p>
+      <ol class="steps">
+        <li class="{{ 'done' if job.status.value != 'queued' and job.status.value != 'fetching' else 'active' }}">Fetch diff</li>
+        <li class="{{ 'active' if job.status.value == 'reviewing' else '' }}">Analyze</li>
+        <li>Report</li>
+      </ol>
+      {% if job.status.value == 'reviewing' and job.total_units %}
+      <progress class="meter" max="{{ job.total_units }}" value="{{ job.done_units }}">{{ progress }}%</progress>
+      <p class="mono dim">{{ job.done_units }} / {{ job.total_units }} segments &middot; {{ job.findings|length }} findings so far</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {% else %}
+  <section class="stats">
+    <div class="stat stat-total"><span class="stat-num">{{ job.findings|length }}</span><span class="stat-label">Findings</span></div>
+    <div class="stat sev-critical"><span class="stat-num">{{ counts['critical'] + counts['high'] }}</span><span class="stat-label">Critical / High</span></div>
+    <div class="stat sev-medium"><span class="stat-num">{{ counts['medium'] }}</span><span class="stat-label">Medium</span></div>
+    <div class="stat sev-low"><span class="stat-num">{{ counts['low'] + counts['info'] }}</span><span class="stat-label">Low / Info</span></div>
+    <div class="stat"><span class="stat-num">{{ job.files_reviewed|length }}</span><span class="stat-label">Files scanned</span></div>
+  </section>
+
+  {% if job.errors %}
+  <div class="alert alert-warn" role="alert">
+    <strong>{{ job.errors|length }} segment{{ 's' if job.errors|length != 1 }} could not be analyzed.</strong>
+    <ul>{% for e in job.errors[:5] %}<li class="mono">{{ e }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  {% if job.findings %}
+  <form id="post-form" class="findings-form" hx-post="/reviews/{{ job.id }}/post" hx-target="#post-result" hx-swap="innerHTML" hx-disabled-elt="#post-btn">
+    <div class="toolbar card">
+      <div class="filters" role="group" aria-label="Filter by severity">
+        {% for sev in severities %}{% if counts[sev] %}
+        <button type="button" class="chip sev-{{ sev }}" data-filter="{{ sev }}" aria-pressed="true">{{ sev }} <b>{{ counts[sev] }}</b></button>
+        {% endif %}{% endfor %}
+      </div>
+      <label class="check-all"><input type="checkbox" id="select-all" checked><span>Select all</span></label>
+    </div>
+
+    {% for path, items in groups.items() %}
+    <details class="file-group card" open data-group>
+      <summary>
+        <span class="file-name mono">{{ icon('file') }}{{ path }}</span>
+        <span class="file-count">{{ items|length }}</span>
+      </summary>
+      <div class="file-body">
+        {% for f in items %}
+        <article class="finding sev-{{ f.severity.value }}" data-sev="{{ f.severity.value }}">
+          <label class="pick" title="Include when posting to the PR">
+            <input type="checkbox" name="finding_ids" value="{{ f.id }}" checked><span></span>
+          </label>
+          <div class="finding-body">
+            <header class="finding-head">
+              <span class="badge sev-{{ f.severity.value }}">{{ f.severity.value }}</span>
+              <span class="badge badge-cat">{{ f.category.value }}</span>
+              <h3>{{ f.title }}</h3>
+            </header>
+            <p class="finding-meta mono dim">
+              {% if f.line_start %}line {{ f.line_start }}{% if f.line_end and f.line_end != f.line_start %}-{{ f.line_end }}{% endif %}{% else %}file level{% endif %}
+              &middot; {{ (f.confidence * 100)|round|int }}% confidence
+            </p>
+            <p class="finding-text">{{ f.description }}</p>
+            {% if f.suggestion %}<pre class="code"><code>{{ f.suggestion }}</code></pre>{% endif %}
+            {% if f.references %}<p class="refs">{% for r in f.references %}<span class="ref mono">{{ r }}</span>{% endfor %}</p>{% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </details>
+    {% endfor %}
+
+    <div class="postbar card">
+      <div id="post-result" class="post-result" role="status" aria-live="polite"></div>
+      <div class="postbar-actions">
+        <span class="mono dim"><span id="selected-count">{{ job.findings|length }}</span> selected</span>
+        <button id="post-btn" class="btn btn-primary" type="submit">{{ icon('send') }}<span>Post to pull request</span></button>
+      </div>
+    </div>
+  </form>
+
+  {% else %}
+  <section class="card state-card clear">
+    <p class="clear-title">{{ 'All clear' if job.files_reviewed else 'Nothing to review' }}</p>
+    <p class="dim">{{ 'No issues found in the changed code.' if job.files_reviewed else job.message }}</p>
+  </section>
+  {% endif %}
+
+  {% if job.skipped %}
+  <details class="card skipped">
+    <summary>{{ job.skipped|length }} file{{ 's' if job.skipped|length != 1 }} skipped</summary>
+    <ul>{% for s in job.skipped %}<li><span class="mono">{{ s.path }}</span> <span class="dim">{{ s.reason }}</span></li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+  {% endif %}
+</div>

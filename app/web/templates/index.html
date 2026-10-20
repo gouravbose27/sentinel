@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}New review{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow"><span class="pulse"></span>Autonomous code intelligence</p>
+  <h1>Review pull requests at <span class="grad">machine speed</span>.</h1>
+  <p class="lead">Point Sentinel at an Azure DevOps pull request. It reads the diff, hunts for defects in your
+    Python, SQL, Spark SQL and PySpark, and can post findings straight back to the PR.</p>
+</section>
+
+<section class="card console">
+  <div class="card-head">
+    <span class="card-title">Mission parameters</span>
+    <span class="mono dim">POST /reviews</span>
+  </div>
+
+  <form method="post" action="/reviews" class="form" novalidate>
+    {% if errors.form %}<div class="alert alert-error" role="alert">{{ errors.form }}</div>{% endif %}
+
+    <div class="grid-2">
+      <label class="field">
+        <span class="label">Organization</span>
+        <input class="input{{ ' invalid' if errors.org }}" name="org" value="{{ values.org or '' }}" placeholder="contoso" autocomplete="off" required>
+        {% if errors.org %}<span class="hint err">{{ errors.org }}</span>{% endif %}
+      </label>
+      <label class="field">
+        <span class="label">Project</span>
+        <input class="input{{ ' invalid' if errors.project }}" name="project" value="{{ values.project or '' }}" placeholder="Data Platform" autocomplete="off" required>
+        {% if errors.project %}<span class="hint err">{{ errors.project }}</span>{% endif %}
+      </label>
+      <label class="field">
+        <span class="label">Repository</span>
+        <input class="input{{ ' invalid' if errors.repo }}" name="repo" value="{{ values.repo or '' }}" placeholder="etl-pipelines" autocomplete="off" required>
+        {% if errors.repo %}<span class="hint err">{{ errors.repo }}</span>{% endif %}
+      </label>
+      <label class="field">
+        <span class="label">Pull request #</span>
+        <input class="input mono{{ ' invalid' if errors.pr_id }}" name="pr_id" value="{{ values.pr_id or '' }}" placeholder="1234" inputmode="numeric" autocomplete="off" required>
+        {% if errors.pr_id %}<span class="hint err">{{ errors.pr_id }}</span>{% endif %}
+      </label>
+    </div>
+
+    <fieldset class="modules">
+      <legend class="label">Analysis modules</legend>
+      <div class="module-grid">
+        {% for c in categories %}
+        <label class="module{{ ' is-soon' if not c.available }}">
+          <input type="checkbox" name="categories" value="{{ c.category.value }}"
+                 {% if c.available and c.category.value in selected %}checked{% endif %}
+                 {% if not c.available %}disabled{% endif %}>
+          <span class="module-body">
+            <span class="module-icon">{{ icon(c.category.value) }}</span>
+            <span class="module-text">
+              <span class="module-name">{{ c.label }}</span>
+              <span class="module-desc">{{ c.description }}</span>
+            </span>
+            {% if not c.available %}<span class="tag">Soon</span>{% endif %}
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+      {% if errors.categories %}<span class="hint err">{{ errors.categories }}</span>{% endif %}
+    </fieldset>
+
+    <div class="actions">
+      <p class="fine">Code from the pull request is sent to the configured AI model for analysis.</p>
+      <button class="btn btn-primary" type="submit"><span>Initiate review</span></button>
+    </div>
+  </form>
+</section>
+{% endblock %}

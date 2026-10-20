@@ -1,0 +1,9 @@
+{% if error %}
+<div class="alert alert-error" role="alert">{{ error }}</div>
+{% elif result %}
+<div class="alert {{ 'alert-warn' if result.failed else 'alert-ok' }}" role="status">
+  <strong>{{ result.posted }} comment{{ 's' if result.posted != 1 }} posted.</strong>
+  {% if result.duplicates %}{{ result.duplicates }} already on the pull request.{% endif %}
+  {% if result.failed %}{{ result.failed }} failed: {{ result.errors|join(' ') }}{% endif %}
+</div>
+{% endif %}
