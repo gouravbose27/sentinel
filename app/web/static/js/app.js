@@ -12,6 +12,12 @@
     $('#select-all').checked = active.length > 0 && active.every((b) => b.checked);
   }
 
+  function refreshModules() {
+    const btn = $('#review-submit');
+    if (!btn) return;
+    btn.disabled = !$$('input[name="categories"]:checked').length;
+  }
+
   function applyFilters() {
     const off = new Set($$('[data-filter][aria-pressed="false"]').map((c) => c.dataset.filter));
     const offCat = new Set($$('[data-filter-cat][aria-pressed="false"]').map((c) => c.dataset.filterCat));
@@ -31,6 +37,7 @@
       $$('input[name="finding_ids"]:not(:disabled)').forEach((b) => (b.checked = e.target.checked));
     }
     refresh();
+    refreshModules();
   });
 
   document.addEventListener('click', (e) => {
@@ -47,5 +54,5 @@
   });
 
   document.addEventListener('htmx:afterSwap', refresh);
-  document.addEventListener('DOMContentLoaded', refresh);
+  document.addEventListener('DOMContentLoaded', () => { refresh(); refreshModules(); });
 })();

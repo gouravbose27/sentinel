@@ -70,6 +70,7 @@ async def run_review(
 
         await asyncio.gather(*(work(*u) for u in units))
 
+        job.findings = [f for f in job.findings if f.category in request.categories]
         job.findings = aggregate(job.findings, settings.min_confidence)
         if units and job.done_units == len(job.errors):
             job.fail("Every analysis request failed. " + job.errors[0])

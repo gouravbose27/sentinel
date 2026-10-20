@@ -40,7 +40,11 @@ class Reviewer(ABC):
         part: int,
         parts: int,
     ) -> list[Finding]:
-        system = f"{COMMON_RULES}\nFocus:\n{focus_for(self.category, file.language)}"
+        system = (
+            f"{COMMON_RULES}\nScope: report only {self.category.value} findings. "
+            "Ignore any issue outside this category, even if it is a real problem.\n"
+            f"Focus:\n{focus_for(self.category, file.language)}"
+        )
         user = build_user_prompt(
             title=ctx.title, description=ctx.description, path=file.path, language=file.language,
             change_type=file.change_type, part=part, parts=parts, chunk=redact(segment),

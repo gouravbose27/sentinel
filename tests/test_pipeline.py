@@ -62,6 +62,26 @@ def test_review_pipeline_end_to_end():
     assert job.findings[0].line_start == 1 and job.findings[0].file == "/src/job.py"
 
 
+def test_prompt_is_scoped_to_selected_category():
+    seen: list[str] = []
+
+    class SpyLLM:
+        async def parse(self, *, system, user, schema):
+            seen.append(system)
+            return LLMReview(findings=[])
+
+    settings = Settings(openai_api_key=SecretStr("k"), ado_pat=SecretStr("p"))
+    job = ReviewJob(request=ReviewRequest(org="o", project="p", repo="r", pr_id=7, categories=[Category.BUG]))
+
+    async def go():
+        http = httpx.AsyncClient(transport=httpx.MockTransport(ado_handler))
+        async with AdoClient("o", "p", http=http) as ado:
+            await run_review(job, ado=ado, llm=SpyLLM(), settings=settings)
+
+    asyncio.run(go())
+    assert seen and all("report only bug findings" in s for s in seen)
+
+
 def test_closed_pr_never_reaches_llm():
     class ExplodingLLM:
         async def parse(self, **kwargs):
