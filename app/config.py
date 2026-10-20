@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr = SecretStr("")
     openai_model: str = "gpt-4o"
     openai_base_url: str | None = None
+    # Comma-separated models users may pick in the UI; the default model is always included.
+    openai_models: str = "gpt-4o,gpt-4o-mini,gpt-4.1,gpt-4.1-mini"
     openai_temperature: float | None = 0.1
 
     ado_org: str = ""
@@ -37,6 +39,11 @@ class Settings(BaseSettings):
     auto_post_comments: bool = True
     status_check_enabled: bool = False
     block_on_severity: Severity = Severity.HIGH
+
+    @property
+    def available_models(self) -> list[str]:
+        extra = (m.strip() for m in self.openai_models.split(","))
+        return list(dict.fromkeys([self.openai_model, *(m for m in extra if m)]))
 
     @property
     def auto_categories(self) -> list[Category]:

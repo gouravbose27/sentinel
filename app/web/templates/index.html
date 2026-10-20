@@ -40,6 +40,14 @@
       </label>
     </div>
 
+    <label class="field">
+      <span class="label">AI model</span>
+      <select class="input{{ ' invalid' if errors.model }}" name="model">
+        {% for m in models %}<option value="{{ m }}"{% if m == values.model %} selected{% endif %}>{{ m }}</option>{% endfor %}
+      </select>
+      {% if errors.model %}<span class="hint err">{{ errors.model }}</span>{% endif %}
+    </label>
+
     <fieldset class="modules">
       <legend class="label">Analysis modules</legend>
       <div class="module-grid">

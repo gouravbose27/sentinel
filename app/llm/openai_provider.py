@@ -12,8 +12,8 @@ log = logging.getLogger(__name__)
 class OpenAIProvider:
     """Swap `AsyncOpenAI` for `AsyncAzureOpenAI` here when moving to Azure OpenAI."""
 
-    def __init__(self, settings: Settings) -> None:
-        self._model = settings.openai_model
+    def __init__(self, settings: Settings, model: str | None = None) -> None:
+        self._model = model or settings.openai_model
         self._temperature = settings.openai_temperature
         self._client = AsyncOpenAI(
             api_key=settings.openai_api_key.get_secret_value(),

@@ -24,7 +24,7 @@ def _render_form(request: Request, *, values: dict[str, str], selected: list[str
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"categories": catalog(), "values": values, "selected": selected, "errors": errors},
+        {"categories": catalog(), "models": request.app.state.settings.available_models, "values": values, "selected": selected, "errors": errors},
         status_code=status_code,
     )
 
@@ -48,7 +48,7 @@ def _panel_context(job: ReviewJob) -> dict:
 async def index(request: Request) -> Response:
     settings: Settings = request.app.state.settings
     selected = [c.category.value for c in catalog() if c.available]
-    return _render_form(request, values={"org": settings.ado_org}, selected=selected, errors={})
+    return _render_form(request, values={"org": settings.ado_org, "model": settings.openai_model}, selected=selected, errors={})
 
 
 @router.post("/reviews")
@@ -59,14 +59,18 @@ async def create_review(
     repo: str = Form(""),
     pr_id: str = Form(""),
     categories: list[str] = Form(default=[]),
+    model: str = Form(""),
 ) -> Response:
     settings: Settings = request.app.state.settings
-    values = {"org": org, "project": project, "repo": repo, "pr_id": pr_id}
+    model = model or settings.openai_model
+    values = {"org": org, "project": project, "repo": repo, "pr_id": pr_id, "model": model}
     available = {c.value for c in REVIEWERS}
     chosen = [c for c in categories if c in available]
 
     errors: dict[str, str] = {}
-    if not settings.openai_api_key.get_secret_value():
+    if model not in settings.available_models:
+        errors["model"] = "Select a listed model."
+    elif not settings.openai_api_key.get_secret_value():
         errors["form"] = "OPENAI_API_KEY is not configured on the server."
     elif not settings.ado_pat.get_secret_value():
         errors["form"] = "ADO_PAT is not configured on the server."
@@ -76,7 +80,8 @@ async def create_review(
     review_request = None
     try:
         review_request = ReviewRequest(
-            org=org or settings.ado_org, project=project, repo=repo, pr_id=pr_id, categories=chosen
+            org=org or settings.ado_org, project=project, repo=repo, pr_id=pr_id, categories=chosen,
+            model=model,
         )
     except ValidationError as exc:
         for err in exc.errors():

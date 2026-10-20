@@ -111,6 +111,7 @@ class ReviewRequest(BaseModel):
     repo: str
     pr_id: int = Field(gt=0)
     categories: list[Category] = Field(min_length=1)
+    model: str | None = None
 
     @field_validator("org", "project", "repo", mode="before")
     @classmethod

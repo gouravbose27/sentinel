@@ -51,7 +51,7 @@ async def execute_job(
         async with AdoClient(job.request.org, settings.ado_pat.get_secret_value()) as ado:
             if auto and settings.status_check_enabled:
                 await _set_status(ado, job, "pending", "AI review in progress")
-            await run_review(job, ado=ado, llm=llm or OpenAIProvider(settings), settings=settings)
+            await run_review(job, ado=ado, llm=llm or OpenAIProvider(settings, job.request.model), settings=settings)
             if auto:
                 await _finish_auto(ado, job, settings)
     except Exception:
