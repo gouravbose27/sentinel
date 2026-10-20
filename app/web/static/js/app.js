@@ -34,6 +34,12 @@
   });
 
   document.addEventListener('click', (e) => {
+    if (e.target.closest('#theme-toggle')) {
+      const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+      document.documentElement.dataset.theme = next;
+      try { localStorage.setItem('theme', next); } catch (err) { /* storage unavailable */ }
+      return;
+    }
     const chip = e.target.closest('[data-filter], [data-filter-cat]');
     if (!chip) return;
     chip.setAttribute('aria-pressed', chip.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
