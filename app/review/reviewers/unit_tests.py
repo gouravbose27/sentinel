@@ -22,7 +22,7 @@ def is_test_path(path: str) -> bool:
 class UnitTestReviewer(Reviewer):
     category = Category.TEST
     label = "Unit tests"
-    description = "Suggested tests for changed logic, in the file's own language"
+    description = "Suggest unit tests for changed logic"
 
     def applies_to(self, file: ChangedFile) -> bool:
         return super().applies_to(file) and not is_test_path(file.path)
