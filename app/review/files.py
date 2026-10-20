@@ -1,7 +1,7 @@
 import asyncio
 import re
 
-from app.ado.client import AdoClient
+from app.ado.client import AdoClient, AdoError
 from app.config import Settings
 from app.models.schemas import ChangedFile, PRContext, ReviewRequest, SkippedFile
 from app.review.dependencies import manifest_kind
@@ -44,6 +44,9 @@ async def collect_pull_request(
 ) -> PRContext:
     project, repo, pr_id = request.project, request.repo, request.pr_id
     pr = await ado.get_pull_request(project, repo, pr_id)
+    pr_status = str(pr.get("status", "active")).lower()
+    if pr_status != "active":
+        raise AdoError(f"Pull request {pr_id} is {pr_status}; only active pull requests can be reviewed.")
     iteration = await ado.get_latest_iteration(project, repo, pr_id)
     head_commit = iteration["sourceRefCommit"]["commitId"]
     base_commit = iteration["commonRefCommit"]["commitId"]

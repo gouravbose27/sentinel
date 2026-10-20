@@ -62,6 +62,31 @@ def test_review_pipeline_end_to_end():
     assert job.findings[0].line_start == 1 and job.findings[0].file == "/src/job.py"
 
 
+def test_closed_pr_never_reaches_llm():
+    class ExplodingLLM:
+        async def parse(self, **kwargs):
+            raise AssertionError("LLM must not be called for a closed PR")
+
+    settings = Settings(openai_api_key=SecretStr("k"), ado_pat=SecretStr("p"))
+
+    for state in ("completed", "abandoned"):
+        def handler(request: httpx.Request, state=state) -> httpx.Response:
+            if request.url.path.endswith("/pullrequests/7"):
+                return httpx.Response(200, json={"title": "t", "status": state})
+            return httpx.Response(404)
+
+        job = ReviewJob(request=ReviewRequest(org="o", project="p", repo="r", pr_id=7, categories=[Category.BUG]))
+
+        async def go():
+            http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+            async with AdoClient("o", "p", http=http) as ado:
+                await run_review(job, ado=ado, llm=ExplodingLLM(), settings=settings)
+
+        asyncio.run(go())
+        assert job.status is JobStatus.FAILED
+        assert state in (job.message or "") or any(state in e for e in job.errors)
+
+
 def test_pages_render():
     client = TestClient(create_app(Settings(openai_api_key=SecretStr(""), ado_pat=SecretStr(""))))
     assert client.get("/health").json() == {"status": "ok"}
